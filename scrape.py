@@ -87,14 +87,86 @@ def scrape_ladders():
     ladder_users.to_csv('data/ladder_users.csv')
 
 
+def scrape_ladder_player_games(ladder_users_path):
 
-def main():
+    df = pd.read_csv(ladder_users_path)
 
-    scrape_ladders()
+    usernames = df['usernames'].unique().tolist()
+
+    game_links = []
+
+    progress = tqdm(total=len(usernames), desc="game links: 0")
+    for username in usernames:
+        
+        try:
+            # scrape all game_links
+            game_links += get_user_game_links(username)
+        
+        except:
+            pass
+        
+        progress.set_description(f"game links: {len(game_links)}")
+        progress.update(1)
+
+        # only pull 500 for now
+        if len(game_links) > 500:
+            break
+
+    progress.close()
+
+    return game_links
+
+
+def get_user_game_links(username):
+
+    
+
+    links = []
+    # exit text 
+
+    page = 1
+    while True:
+
+        games_link = "https://replay.pokemonshowdown.com/search?user={username}&format=&page={page}&output=html"
+        
+        response = r.get(games_link.format(username=username, page=page))
+
+        content = response.content
+
+        soup = BeautifulSoup(content, "html.parser")
+
+        text = soup.get_text()
+
+        if text == "Can't search any further back":
+            break
+
+        # https://replay.pokemonshowdown.com/
+
+        hrefs = [a.get("href") for a in soup.find_all("a") if a.get("href")]
+        hrefs = ['https://replay.pokemonshowdown.com{}.json'.format(href) for href in hrefs]
+
+        if len(hrefs) == 0:
+            break
+
+        links += hrefs
+
+        # increment page
+        page += 1
+
+    return links
 
     
 
 
+def main():
+
+    #scrape_ladders()
+    game_links = scrape_ladder_player_games('data/ladder_users.csv')
+    # save as json file
+    with open("data/game_links.json", "w") as f:
+        json.dump(game_links , f, indent=4)
+
+    
 if __name__ == "__main__":
     main()
 
