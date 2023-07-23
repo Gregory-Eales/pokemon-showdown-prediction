@@ -4,6 +4,7 @@ import pandas as pd
 import requests as r
 import json
 import time
+import glob
 
 
 def get_ladder_links(ladder_url):
@@ -109,7 +110,7 @@ def scrape_ladder_player_games(ladder_users_path):
         progress.update(1)
 
         # only pull 500 for now
-        if len(game_links) > 500:
+        if len(game_links) > 50000:
             break
 
     progress.close()
@@ -155,16 +156,95 @@ def get_user_game_links(username):
 
     return links
 
+
+def download_game(game_url):
+
+    # make a request to the URL and get the response
+    response = r.get(game_url)
+    data = response.json()
+
+
+    start = game_url.find('https://replay.pokemonshowdown.com/') + len('https://replay.pokemonshowdown.com/')
+    end = game_url.find('.json')
+    filename = game_url[start:end]
+    filename = "data/raw-games/{}.json".format(filename)
+
+    with open(filename, "w") as outfile:
+        json.dump(data, outfile, indent=4)
+
+
+def download_games(game_links):
+
+    download_game(game_links[0])
+
+    for game_link in tqdm(game_links):
+        try:
+            download_game(game_link)
+        except:
+            pass
+
+
+
+def get_game_files(path):
+    json_files = glob.glob(path + "*.json")
+    return json_files
+
+
+def parse_game(raw_game):
+    """
+    loop through each game and extract metadata:
+        - winners
+        - pokemon teams
+    """
     
+    keys = list(raw_game.keys())
+
+    print(raw_game['log'])
+
+    for key in keys:
+
+        if key == 'log':
+            continue
+
+        print(f"{key} : {raw_game[key]}")
+    
+    # p1_name = raw_game['p1']
+    # p2_name = raw_game['p2']
+    # p1_id = raw_game['p1id']
+    # p2_id = raw_game['p2id']
+    # game_format = raw_game['format']
+
+    # lines = raw_game['log'].split('\n')
+
+    # for line in lines:
+    #     print(line)
+
+
+def load_game(path):
+    with open(path) as f:
+        game = json.load(f)
+    return game
 
 
 def main():
 
-    #scrape_ladders()
-    game_links = scrape_ladder_player_games('data/ladder_users.csv')
-    # save as json file
-    with open("data/game_links.json", "w") as f:
-        json.dump(game_links , f, indent=4)
+    # # #scrape_ladders()
+    # game_links = scrape_ladder_player_games('data/ladder_users.csv')
+    # # save as json file
+    # with open("data/game_links.json", "w") as f:
+    #     json.dump(game_links , f, indent=4)
+
+    # with open('data/game_links.json') as f:
+    #     game_links = json.load(f)
+
+    
+    # download_games(game_links)
+
+    game_files = get_game_files('data/raw-games/')
+    for game_file in game_files:
+        game = load_game(game_file)
+        parse_game(game)
+        break
 
     
 if __name__ == "__main__":
