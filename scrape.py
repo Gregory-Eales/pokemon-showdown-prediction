@@ -5,7 +5,7 @@ import requests as r
 import json
 import time
 import glob
-
+import os
 
 def get_ladder_links(ladder_url):
     """
@@ -226,6 +226,36 @@ def load_game(path):
     return game
 
 
+def get_html_from_json_games():
+
+    game_links = json.loads(open("data/game_links.json").read())
+
+    # load existing game files we already have
+    existing_game_file_names = os.listdir("data/raw-html-games/")
+    existing_game_file_names = set([file_name.strip(".html") for file_name in existing_game_file_names])
+
+
+    for game_link in tqdm(game_links):
+
+        #print(game_link)
+        game_link = game_link.strip(".json")
+        #print(game_link)
+        
+        game_name = game_link.split('/')[-1]
+
+        if game_name in existing_game_file_names:
+            continue
+
+        response = r.get(game_link)
+
+
+        # save the text of the response as an html file insife of raw-html-games folder in data
+        # the response.text is the html log of the game, we will be saving that instead of the josn
+        with open("data/raw-html-games/{}.html".format(game_name), "w") as outfile:
+            outfile.write(response.text)
+
+
+
 def main():
 
     # # #scrape_ladders()
@@ -240,11 +270,13 @@ def main():
     
     # download_games(game_links)
 
-    game_files = get_game_files('data/raw-games/')
-    for game_file in game_files:
-        game = load_game(game_file)
-        parse_game(game)
-        break
+    # game_files = get_game_files('data/raw-games/')
+    # for game_file in game_files:
+    #     game = load_game(game_file)
+    #     parse_game(game)
+    #     break
+
+    get_html_from_json_games()
 
     
 if __name__ == "__main__":
